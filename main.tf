@@ -69,16 +69,6 @@ resource "aws_subnet" "database" {
   tags = "${merge(var.tags, var.database_subnet_tags, map("Name", format("%s-subnet-database-%s", var.name, element(var.azs, count.index))))}"
 }
 
-resource "aws_db_subnet_group" "database" {
-  count = "${length(var.database_subnets) > 0 && var.create_database_subnet_group ? 1 : 0}"
-
-  name        = "${var.name}-rds-subnet-group"
-  description = "Database subnet groups for ${var.name}"
-  subnet_ids  = ["${aws_subnet.database.*.id}"]
-
-  tags = "${merge(var.tags, map("Name", format("%s-database-subnet-group", var.name)))}"
-}
-
 resource "aws_subnet" "elasticache" {
   count = "${length(var.elasticache_subnets)}"
 
@@ -87,14 +77,6 @@ resource "aws_subnet" "elasticache" {
   availability_zone = "${element(var.azs, count.index)}"
 
   tags = "${merge(var.tags, var.elasticache_subnet_tags, map("Name", format("%s-subnet-elasticache-%s", var.name, element(var.azs, count.index))))}"
-}
-
-resource "aws_elasticache_subnet_group" "elasticache" {
-  count = "${length(var.elasticache_subnets) > 0 ? 1 : 0}"
-
-  name        = "${var.name}-elasticache-subnet-group"
-  description = "Elasticache subnet groups for ${var.name}"
-  subnet_ids  = ["${aws_subnet.elasticache.*.id}"]
 }
 
 resource "aws_subnet" "public" {
@@ -127,50 +109,8 @@ data "aws_vpc_endpoint_service" "s3" {
   service = "s3"
 }
 
-resource "aws_vpc_endpoint" "s3" {
-  count = "${var.enable_s3_endpoint}"
-
-  vpc_id       = "${aws_vpc.mod.id}"
-  service_name = "${data.aws_vpc_endpoint_service.s3.service_name}"
-}
-
-resource "aws_vpc_endpoint_route_table_association" "private_s3" {
-  count = "${var.enable_s3_endpoint ? length(var.private_subnets) : 0}"
-
-  vpc_endpoint_id = "${aws_vpc_endpoint.s3.id}"
-  route_table_id  = "${element(aws_route_table.private.*.id, count.index)}"
-}
-
-resource "aws_vpc_endpoint_route_table_association" "public_s3" {
-  count = "${var.enable_s3_endpoint ? length(var.public_subnets) : 0}"
-
-  vpc_endpoint_id = "${aws_vpc_endpoint.s3.id}"
-  route_table_id  = "${aws_route_table.public.id}"
-}
-
 data "aws_vpc_endpoint_service" "dynamodb" {
   service = "dynamodb"
-}
-
-resource "aws_vpc_endpoint" "dynamodb" {
-  count = "${var.enable_dynamodb_endpoint}"
-
-  vpc_id       = "${aws_vpc.mod.id}"
-  service_name = "${data.aws_vpc_endpoint_service.dynamodb.service_name}"
-}
-
-resource "aws_vpc_endpoint_route_table_association" "private_dynamodb" {
-  count = "${var.enable_dynamodb_endpoint ? length(var.private_subnets) : 0}"
-
-  vpc_endpoint_id = "${aws_vpc_endpoint.dynamodb.id}"
-  route_table_id  = "${element(aws_route_table.private.*.id, count.index)}"
-}
-
-resource "aws_vpc_endpoint_route_table_association" "public_dynamodb" {
-  count = "${var.enable_dynamodb_endpoint ? length(var.public_subnets) : 0}"
-
-  vpc_endpoint_id = "${aws_vpc_endpoint.dynamodb.id}"
-  route_table_id  = "${aws_route_table.public.id}"
 }
 
 resource "aws_route_table_association" "private" {
